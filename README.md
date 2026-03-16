@@ -30,6 +30,14 @@ You receive 33 frames of video, followed by a hard freeze while the GPU sweats t
 
 Instead of the smooth, high-fidelity real-time generation benchmarked in the paper, we get a stuttering stream that completely fails as a real-time production tool.
 
+### Visual Evidence: The 33-Frame Stutter in Action
+
+We recreated the exact cinematic prompts from the original Helios paper and ran them through our LiveKit WebRTC stream. The result perfectly visualizes the hardware bottleneck. 
+
+[Watch the Real-Time Stream Capture (demo_paper_prompts_real_time.mp4)](assets/demo_paper_prompts_real_time.mp4)
+
+In this capture, the FPS counter clearly shows the severe latency drops as each 33-frame chunk is batched and transmitted. This is the exact "brutal reality" we are solving with the B200 rewrite.
+
 ![Helios Architecture and H100 Bottleneck](assets/architecture_chart_new.png)
 
 *Figure 1: High-fidelity diagram illustrating the 33-frame chunking bottleneck in `pipeline_helios_diffusers.py` caused by H100 memory limits, and the subsequent stuttering WebRTC delivery via LiveKit.*
