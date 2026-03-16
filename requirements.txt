@@ -1,0 +1,7 @@
+flash-attn-v4
+torch>=2.2.0
+diffusers>=0.30.0
+triton>=3.0.0
+xformers>=0.0.28
+einops
+rife-ncnn-vulkan-python
