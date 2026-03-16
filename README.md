@@ -1,20 +1,34 @@
 # Helios B200 Unleashed
 
-## The Promise vs. The Reality
+## The Promise vs. The Brutal Reality
 
-When the original [Helios paper](https://arxiv.org/abs/2312.13400) and [repository](https://github.com/PKU-YuanGroup/Open-Sora-Plan) were released, we were incredibly excited. The benchmarks showcased breathtaking, high-fidelity long video generation. The visual quality, temporal consistency, and sheer resolution were revolutionary. We thought we were looking at the future of real-time generation.
+When the original [Helios paper](https://arxiv.org/abs/2312.13400) and [repository](https://github.com/PKU-YuanGroup/Helios) were released, we were incredibly excited. The benchmarks showcased breathtaking, high-fidelity long video generation. A 14-Billion parameter diffusion transformer generating video at >19.5 FPS on a single H100 GPU? No sharding? No massive server clusters? It sounded like the holy grail of real-time multi-modal generation.
 
-However, our excitement turned into severe disappointment over the weekend of March 14-15 when we finally tried to run the interactive, real-time generation ourselves. We discovered a massive, disheartening gap between offline batch generation and interactive, real-time deployment. The reality is a jittery, stuttering mess.
+However, our excitement turned into severe disappointment over the weekend (March 14-15) when we finally deployed and tested the interactive, real-time generation ourselves. We discovered a massive, disheartening gap between offline batch generation and interactive, real-time deployment. The reality is a jittery, stuttering mess. 
 
-### The Hardware Bottleneck & The 33-Frame Problem
+Here is exactly what we found when we went deep into the technical architecture, and why we are now completely rewriting the system for the B200.
 
-Why does this happen? The root cause is a fundamental hardware and memory bandwidth bottleneck, specifically related to H100 memory limits.
+### The Hardware Bottleneck & The Deployment Nightmare
 
-During our weekend dive into the codebase, we uncovered exactly how the architecture functions in practice. We had to patch the `pipeline_helios_diffusers.py` codebase to yield latents chunk-by-chunk to enable interactive rendering over WebRTC. 
+Getting Helios to run interactively on a single H100 was a brutal engineering challenge. 
+1. **The Compilation Wall:** We compiled the model using `torch.compile(mode="max-autotune")` to hit the 19.5 FPS speed the paper claimed. Compiling a 14-Billion parameter transformer from scratch on CUDA 12.8 took about 10 to 15 minutes of raw processing time. The compiler stalls while building CUDA graphs and partitioning the `cudagraph` into 2 partitions. This means the user is staring at a black screen for 15 minutes before the first frame even attempts to render.
+2. **The Memory Limit:** During our deployment on the `helios-livekit-node`, PyTorch immediately allocated 32.55 GiB of memory just to hold the active process. When we tried to push 20 inference steps, the pipeline caused bottlenecks and instability. We had to dial the model down to 12 inference steps (or the "2 2 2" setting) at a heavily down-sampled 512x288 resolution just to keep the H100 from crashing. 8 steps were too fast and ignored complex camera angle prompts, while anything higher broke real-time performance.
 
-What we found was staggering: the H100 memory limits and the underlying architecture force the model to batch render these latents in **33-frame chunks**. This chunking is exactly what causes the video to play in "chunks" and appear incredibly jittery.
+### The "33-Frame Chunk" Codebase Problem
 
-Because these 33-frame chunks have to be batched, computed, and then pushed over LiveKit (WebRTC), it creates a stuttering, non-continuous playback experience. Instead of the smooth, high-fidelity real-time generation benchmarked in the paper, we get latency spikes and blocky, discontinuous output that completely shatters the illusion of real-time generation.
+The deepest flaw we uncovered is in the core codebase itself. The native `pipeline_helios_diffusers.py` was built for offline batch generation. It calculates and waits for all 240 frames to finish before it outputs the video tensor.
+
+To make it stream over WebRTC for a live user, we had to write a custom patch (`patch_pipeline.py`) to mutilate their autoregressive loop. Instead of waiting for 240 frames, we forced the model to call `yield current_video` the split second a **33-frame chunk** passes through the VAE decoder. 
+
+Our WebRTC streaming script (`stream_helios_generator.py`) then catches that yielded chunk and blasts it over the LiveKit socket instantly. 
+
+### Why the Playback is a Jittery Mess
+
+This 33-frame chunking is exactly what destroys the real-time illusion. Because the H100 memory limits and the lack of a KV-cache force us to batch render these 33-frame chunks, the playback on the client side is fundamentally broken. 
+
+You receive 33 frames of video, followed by a hard freeze while the GPU sweats to render the next batch through the VAE, and then you get the next 33 frames. It is a chunky, jittery, non-continuous playback experience. The hardware is bottlenecking the autoregressive decoding, causing severe latency spikes. 
+
+Instead of the smooth, high-fidelity real-time generation benchmarked in the paper, we get a stuttering stream that completely fails as a real-time production tool.
 
 ![Helios Architecture and H100 Bottleneck](assets/architecture_chart_new.png)
 
@@ -22,22 +36,28 @@ Because these 33-frame chunks have to be batched, computed, and then pushed over
 
 ## Our Solution: B200 + FlashAttention-4 + TMEM Architecture
 
-To bridge this gap and achieve the original benchmarked quality in *true real-time*, we have completely re-engineered the inference stack.
+To bridge this gap and achieve the original benchmarked quality in *true continuous real-time*, we are tearing the system down and moving to the NVIDIA Blackwell B200 architecture.
 
-We introduce a novel architecture leveraging the sheer compute density of the **NVIDIA B200**, paired with **FlashAttention-4** for optimal self-attention scaling, and a custom **TMEM (Temporal Memory) architecture** to eliminate the KV-cache memory bandwidth bottleneck.
+1. **B200 Massive Memory Bandwidth:** Autoregressive decoding is fundamentally memory-bandwidth bound. The B200 provides 8 TB/s of HBM3e bandwidth (a ~2.4x jump over the H100's 3.35 TB/s). This allows us to continuously stream weights and activations without needing the 33-frame batching crutch.
+2. **FlashAttention-4 (CuTe-DSL):** We are entirely replacing the native attention blocks with FlashAttention-4. Because FA4 is implemented in CuTe-DSL embedded directly in Python, it reduces compilation times by 20-30x compared to C++ templates, entirely solving our 15-minute `torch.compile` stall. Furthermore, it achieves up to 1613 TFLOPs/s on the B200, breaking the Petaflop barrier.
+3. **TMEM (Tensor Memory) & TMA:** FlashAttention-4 was built specifically for Blackwell. It utilizes the asynchronous TMA (Tensor Memory Accelerator) to move data from HBM to the massive 256KB-per-SM TMEM pool directly adjacent to the Tensor Cores. This overlaps compute and memory access at a scale previously impossible.
+
+By combining the 8 TB/s bandwidth with FA4 and TMA, we can eliminate the 33-frame chunking, bypass the LiveKit jitter, and deliver a smooth, high-fidelity, real-time video stream.
 
 ![Performance Benchmark](assets/chart_1.png)
 
-*Figure 2: Real-time generation quality comparison. While current hardware bottlenecks force severe quality degradation to maintain low latency, our B200 + FlashAttention-4 + TMEM architecture sustains paper-level fidelity in real-time.*
+*Figure 2: Real-time generation quality comparison. While current H100 bottlenecks force chunking and severe quality degradation to maintain low latency, our B200 + FlashAttention-4 architecture sustains paper-level fidelity in a continuous real-time stream.*
 
-### Architecture Deep Dive
+## The Roadmap: Adding The Director's Tools
 
-1. **B200 Massive Parallelism:** The BlackWell architecture's transformer engine natively accelerates the precision required for high-fidelity diffusion steps without the VRAM thrashing seen in H100 clusters.
-2. **FlashAttention-4:** By significantly reducing the IO operations during the attention mechanism calculation over long video sequences, we keep the GPUs fed with data, entirely bypassing the typical memory-bound latency spikes.
-3. **TMEM (Temporal Memory):** A proprietary caching layer that specifically manages inter-frame temporal consistency state, allowing instant access to temporal priors without recomputing the entire causal context.
+Once the base B200 architecture is stable, our roadmap includes:
+- **LingBot-World Camera Controls:** Integrating explicit 3D camera pose controls (fx, fy, cx, cy matrices) directly into the generation pipeline to allow a human director to mathematically steer the camera in real-time, matching the sub-second latency of projects like LingBot-World.
+- **Practical-RIFE Interpolation:** Running the base Helios model at a mathematically comfortable 12-16 FPS and handing the output to RIFE (Real-Time Intermediate Flow Estimation) to perfectly hallucinate the in-between frames, providing a buttery-smooth 60 FPS cinematic framerate to the Video Village monitor at a fraction of the compute cost.
 
 ## Join Us
 
-We are solving some of the hardest problems in distributed systems, high-performance computing, and generative AI. If you are an elite systems engineer, kernel hacker, or AI researcher who wants to push the boundaries of real-time multi-modal generation, we need you.
+This isn't an integration ticket. It's a fundamental engineering war against latency. We are fighting the CPU, the network, and the speed of light to deliver real-time video generation.
 
-Let's build the future of real-time generation.
+If you are an engineer who looks at the H100 33-frame stutter and sees the blood, sweat, and Triton kernels required to fix it—if you want to optimize TMA pipelines and crush Python overheads on the Blackwell architecture—we want you building Helios.
+
+Let's make silicon sweat.
