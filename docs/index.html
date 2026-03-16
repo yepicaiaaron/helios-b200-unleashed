@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helios-B200-Unleashed: Real-Time High-Quality Video Generation</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 leading-relaxed">
+    <div class="container mx-auto p-6 md:p-10 lg:p-16 max-w-4xl bg-white shadow-lg rounded-lg my-10">
+
+        <header class="text-center mb-12">
+            <h1 class="text-5xl md:text-6xl font-extrabold text-blue-800 mb-4 tracking-tight">
+                Helios-B200-Unleashed
+            </h1>
+            <p class="text-2xl md:text-3xl text-gray-600 font-light">
+                Real-Time High-Quality Video Generation
+            </p>
+        </header>
+
+        <section class="mb-10">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 border-b-2 border-blue-200 pb-2">Introduction</h2>
+            <p class="text-lg mb-4">
+                Helios is a groundbreaking 14B video generation model designed for real-time performance and robustness to long-video drifting. While currently demonstrating impressive capabilities on NVIDIA H100 GPUs, this project, <strong>Helios-B200-Unleashed</strong>, outlines our strategic roadmap to push the boundaries further. Our ambition is to achieve a sustained <strong>24 Frames Per Second (FPS) with unparalleled visual quality</strong> on the next-generation NVIDIA B200 GPU, leveraging advanced quantisation and reinforcement learning techniques.
+            </p>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 border-b-2 border-blue-200 pb-2">Current Benchmarks: Helios on NVIDIA H100</h2>
+            <p class="text-lg mb-4">
+                The Helios model currently delivers a remarkable <strong>19.5 FPS</strong> on a single NVIDIA H100 GPU for minute-scale video generation. This achievement is notable as it does not rely on standard acceleration techniques like KV-cache, sparse/linear attention, or quantization, highlighting Helios's inherent efficiency. It proficiently handles Text-to-Video (T2V), Image-to-Video (I2V), and Video-to-Video (V2V) tasks.
+            </p>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 border-b-2 border-blue-200 pb-2">The Power of NVIDIA B200: A New Era for AI Inference</h2>
+            <p class="text-lg mb-4">
+                The NVIDIA B200 GPU, powered by the innovative Blackwell architecture, represents a monumental leap in AI inference capabilities. Benchmarking indicates significant advantages in throughput and cost-effectiveness compared to its predecessors (H100 and H200). The B200 delivers up to <strong>15x performance improvements</strong> over the Hopper generation, primarily due to:
+            </p>
+            <ul class="list-disc list-inside space-y-2 text-lg pl-5">
+                <li><strong>NVFP4 Precision:</strong> A new floating-point format designed for extreme efficiency.</li>
+                <li><strong>NVLink 5 Interconnects:</strong> Enhanced bandwidth for multi-GPU communication.</li>
+                <li><strong>TensorRT-LLM & Dynamo:</strong> Software optimizations accelerating large language model inference, which can be adapted for video generation.</li>
+            </ul>
+            <p class="text-lg mt-4">
+                These innovations provide the foundational hardware capabilities essential for our 24 FPS target.
+            </p>
+        </section>
+
+        <section class="mb-10 bg-blue-50 p-6 rounded-lg shadow-md">
+            <h2 class="text-4xl font-extrabold text-blue-700 mb-6 text-center">Future Roadmap for 24 FPS with High Visual Quality on B200</h2>
+            <p class="text-xl text-gray-700 mb-8 text-center">
+                To transcend the current performance and achieve 24 FPS with high visual fidelity on the B200, our roadmap focuses on two critical integration pathways: LightX2V and GenRL.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="bg-blue-300 text-white rounded-full h-8 w-8 flex items-center justify-center mr-3 text-lg font-semibold">1</span>
+                        LightX2V Integration for Extreme Performance (FP8/NVFP4 Quantisation)
+                    </h3>
+                    <p class="text-lg mb-4">
+                        LightX2V is an advanced inference framework specifically engineered for light image and video generation. Its integration will be pivotal in optimizing Helios's execution on the B200:
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-lg pl-5">
+                        <li><strong>FP8/NVFP4 Quantisation:</strong> We will leverage LightX2V's support for FP8 (and B200's native NVFP4) per-tensor quantisation. This will drastically reduce the memory footprint and computational requirements, enabling higher throughput without significant quality degradation. LightX2V has demonstrated accelerations of approximately <strong>42x</strong> with FP8 models and 4-step CFG/step distillation on H100, providing a strong basis for even greater gains on B200.</li>
+                        <li><strong>CFG Parallelism and Block-Level Offload:</strong> Further optimizations from LightX2V, such as CFG parallelism and intelligent block-level offloading, will ensure efficient resource utilization and minimize latency, directly contributing to our FPS goal.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="bg-blue-300 text-white rounded-full h-8 w-8 flex items-center justify-center mr-3 text-lg font-semibold">2</span>
+                        GenRL for Advanced Motion and Aesthetic Tuning (FlowGRPO Reinforcement Learning)
+                    </h3>
+                    <p class="text-lg mb-4">
+                        While LightX2V focuses on raw performance, GenRL will be instrumental in elevating the visual quality and coherence of the generated videos:
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-lg pl-5">
+                        <li><strong>FlowGRPO Reinforcement Learning:</strong> We will implement FlowGRPO reinforcement learning, a core component of GenRL, for sophisticated motion and aesthetic tuning. This technique enables multi-reward optimization, using metrics like HPSv3 and VideoAlign, to refine the diffusion and flow models within Helios.</li>
+                        <li><strong>Enhanced Motion Coherence & Aesthetic Quality:</strong> By applying FlowGRPO, we anticipate significant improvements in video output, specifically in achieving fluid motion, reducing artifacts, and boosting overall aesthetic appeal to meet professional quality standards. GenRL's high-performance LoRA checkpoints provide a strong foundation for these enhancements.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 border-b-2 border-blue-200 pb-2">Achieving the 24 FPS & High Quality Synergy</h2>
+            <p class="text-lg mb-4">
+                The combination of the NVIDIA B200's raw computational power, LightX2V's aggressive inference optimizations (especially FP8/NVFP4 quantisation), and GenRL's sophisticated quality enhancements (FlowGRPO reinforcement learning) creates a synergistic approach. This trifecta will enable Helios to not only surpass the 24 FPS benchmark but also set a new standard for real-time, high-visual-quality video generation. We are confident this roadmap will unleash the full potential of Helios on the B200 architecture.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 border-b-2 border-blue-200 pb-2">Conclusion & Next Steps</h2>
+            <p class="text-lg mb-4">
+                Helios-B200-Unleashed represents our commitment to leading the frontier of real-time video generation. With the strategic integration of LightX2V and GenRL on the NVIDIA B200 platform, we are poised to deliver unprecedented performance and visual fidelity. We look forward to sharing our progress and the continued evolution of this exciting project.
+            </p>
+        </section>
+
+    </div>
+</body>
+</html>
