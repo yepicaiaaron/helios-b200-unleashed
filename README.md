@@ -69,3 +69,37 @@ This isn't an integration ticket. It's a fundamental engineering war against lat
 If you are an engineer who looks at the H100 33-frame stutter and sees the blood, sweat, and Triton kernels required to fix it—if you want to optimize TMA pipelines and crush Python overheads on the Blackwell architecture—we want you building Helios.
 
 Let's make silicon sweat.
+
+## Real-Time Stutter Benchmark Matrix
+
+Here are the results of testing various `pyramid_num_inference_steps_list` settings on the `helios-livekit-node-333` instance. As the quality steps increase, the hardware bottleneck becomes more evident, leading to severe frame freezing.
+
+### Setting: [1,1,1]
+| Prompt A | Prompt B |
+|----------|----------|
+| <video src="assets/benchmark_1_A.mp4" width="320" controls></video> | <video src="assets/benchmark_1_B.mp4" width="320" controls></video> |
+
+### Setting: [2,2,2]
+| Prompt A | Prompt B |
+|----------|----------|
+| <video src="assets/benchmark_2_A.mp4" width="320" controls></video> | <video src="assets/benchmark_2_B.mp4" width="320" controls></video> |
+
+### Setting: [4,4,4]
+| Prompt A | Prompt B |
+|----------|----------|
+| <video src="assets/benchmark_4_A.mp4" width="320" controls></video> | <video src="assets/benchmark_4_B.mp4" width="320" controls></video> |
+
+### Setting: [8,8,8]
+| Prompt A | Prompt B |
+|----------|----------|
+| <video src="assets/benchmark_8_A.mp4" width="320" controls></video> | <video src="assets/benchmark_8_B.mp4" width="320" controls></video> |
+
+### Setting: [16,16,16]
+| Prompt A | Prompt B |
+|----------|----------|
+| <video src="assets/benchmark_16_A.mp4" width="320" controls></video> | <video src="assets/benchmark_16_B.mp4" width="320" controls></video> |
+
+### Setting: [20,20,20]
+| Prompt A | Prompt B |
+|----------|----------|
+| <video src="assets/benchmark_20_A.mp4" width="320" controls></video> | <video src="assets/benchmark_20_B.mp4" width="320" controls></video> |
